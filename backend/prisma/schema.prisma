@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+  ACTIONED
+}
+
+model User {
+  id              String          @id @default(cuid())
+  firebaseUid     String          @unique
+  displayName     String
+  username        String?         @unique
+  email           String?
+  photoURL        String?
+  bio             String?
+  lastSeenAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  sentRequests    FriendRequest[] @relation("FriendRequestSender")
+  receivedRequests FriendRequest[] @relation("FriendRequestReceiver")
+  chatMembers     ChatMember[]
+  messages        Message[]
+  reactions       MessageReaction[]
+  chatPreferences ChatPreference[]
+  blocksMade      BlockedUser[]   @relation("BlockerBlocks")
+  blocksReceived  BlockedUser[]   @relation("BlockedTarget")
+  reportsMade     UserReport[]    @relation("ReportReporter")
+  reportsReceived UserReport[]    @relation("ReportTarget")
+}
+
+model FriendRequest {
+  id         String              @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     FriendRequestStatus @default(PENDING)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  sender     User                @relation("FriendRequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User                @relation("FriendRequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+}
+
+model Chat {
+  id          String       @id @default(cuid())
+  isGroup     Boolean      @default(false)
+  title       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  members     ChatMember[]
+  messages    Message[]
+  preferences ChatPreference[]
+}
+
+model BlockedUser {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker   User     @relation("BlockerBlocks", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("BlockedTarget", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+model UserReport {
+  id          String       @id @default(cuid())
+  reporterId  String
+  reportedId  String
+  reason      String
+  details     String?
+  status      ReportStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  reporter    User         @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported    User         @relation("ReportTarget", fields: [reportedId], references: [id], onDelete: Cascade)
+
+  @@index([reportedId, status])
+  @@index([reporterId])
+}
+
+model ChatPreference {
+  id         String    @id @default(cuid())
+  chatId     String
+  userId     String
+  pinnedAt   DateTime?
+  mutedUntil DateTime?
+  archivedAt DateTime?
+  clearedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  chat       Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@index([userId])
+}
+
+model ChatMember {
+  id        String   @id @default(cuid())
+  chatId    String
+  userId    String
+  joinedAt  DateTime @default(now())
+
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id               String        @id @default(cuid())
+  chatId           String
+  senderId         String
+  text             String
+  status           MessageStatus @default(SENT)
+  deliveredAt      DateTime?
+  readAt           DateTime?
+  editedAt         DateTime?
+  deletedAt        DateTime?
+  replyToMessageId String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  chat             Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender           User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo          Message?      @relation("MessageReply", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies          Message[]     @relation("MessageReply")
+  reactions        MessageReaction[]
+
+  @@index([chatId, createdAt])
+  @@index([senderId])
+  @@index([replyToMessageId])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}

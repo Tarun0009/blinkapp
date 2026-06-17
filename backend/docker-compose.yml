@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: buzzchat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: buzzchat
+      POSTGRES_PASSWORD: buzzchat
+      POSTGRES_DB: buzzchat
+    ports:
+      - "5433:5432"
+    volumes:
+      - buzzchat_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: buzzchat-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+
+volumes:
+  buzzchat_postgres_data:

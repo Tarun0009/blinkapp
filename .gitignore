@@ -40,6 +40,18 @@ local.properties
 node_modules/
 npm-debug.log
 yarn-error.log
+.env
+backend/.env
+backend/dist/
+android/app/google-services.json
+android/app/serviceAccountKey.json.json
+ios/GoogleService-Info.plist
+backend/serviceAccountKey.json
+backend/*serviceAccount*.json
+backend/*service-account*.json
+**/serviceAccountKey*.json
+**/*serviceAccount*.json
+**/*service-account*.json
 
 # fastlane
 #

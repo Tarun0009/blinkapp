@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx firebase-tools:*)",
+      "Bash(npx prisma *)",
+      "Bash(npx --prefix backend prisma migrate dev --name chat_preferences)",
+      "Bash(npm --prefix backend run prisma -- migrate dev --name block_and_report)",
+      "Bash(npm --prefix backend install express-rate-limit)"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "watch": ["src", ".env"],
+  "ext": "ts,json,env",
+  "ignore": ["dist", "node_modules", "prisma/migrations"],
+  "exec": "tsx src/server.ts",
+  "delay": "200"
+}
