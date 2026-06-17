@@ -40,6 +40,10 @@ local.properties
 node_modules/
 npm-debug.log
 yarn-error.log
+
+# Local assistant/tool config
+.claude/
+
 .env
 backend/.env
 backend/dist/
