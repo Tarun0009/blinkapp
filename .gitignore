@@ -44,6 +44,10 @@ yarn-error.log
 # Local assistant/tool config
 .claude/
 
+# Personal notes / docs drafts — keep README.md only
+*.md
+!README.md
+
 .env
 backend/.env
 backend/dist/
