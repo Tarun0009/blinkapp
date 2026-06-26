@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS, FONTS, SHADOWS, SIZES } from '../../../constants/theme';
+import { FONTS, SHADOWS, SIZES } from '../../../constants/theme';
+import { useTheme } from '../../../theme/ThemeContext';
 import { AppIcon } from '../../../components/AppIcon';
 import { PRESS_FEEDBACK, PressableScale } from '../../../components/PressableScale';
 
@@ -22,12 +23,17 @@ export function MessageActionSheet({
   onReply,
   onEdit,
   onDelete,
+  disableMessageActions = false,
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   if (!message) {
     return null;
   }
 
-  const canEdit = isMe && isEditable(message);
+  const canReply = !message.deletedAt && !disableMessageActions;
+  const canEdit = isMe && isEditable(message) && !disableMessageActions;
   const canDelete = isMe && !message.deletedAt;
   const showReactions = !message.deletedAt;
 
@@ -65,12 +71,14 @@ export function MessageActionSheet({
 
           <View style={styles.divider} />
 
-          <ActionRow icon="message-text-outline" label="Reply" onPress={() => { onReply?.(); onClose?.(); }} disabled={!!message.deletedAt} />
+          <ActionRow colors={colors} styles={styles} icon="message-text-outline" label="Reply" onPress={() => { onReply?.(); onClose?.(); }} disabled={!canReply} />
           {canEdit ? (
-            <ActionRow icon="account-edit-outline" label="Edit" onPress={() => { onEdit?.(); onClose?.(); }} />
+            <ActionRow colors={colors} styles={styles} icon="account-edit-outline" label="Edit" onPress={() => { onEdit?.(); onClose?.(); }} />
           ) : null}
           {canDelete ? (
             <ActionRow
+              colors={colors}
+              styles={styles}
               icon="close-circle"
               label="Delete for everyone"
               destructive
@@ -83,7 +91,7 @@ export function MessageActionSheet({
   );
 }
 
-function ActionRow({ icon, label, onPress, destructive, disabled }) {
+function ActionRow({ colors, styles, icon, label, onPress, destructive, disabled }) {
   return (
     <PressableScale
       accessibilityRole="button"
@@ -98,72 +106,74 @@ function ActionRow({ icon, label, onPress, destructive, disabled }) {
       <AppIcon
         name={icon}
         size={20}
-        color={destructive ? COLORS.danger : COLORS.text}
+        color={destructive ? colors.danger : colors.text}
       />
       <Text style={[styles.rowLabel, destructive && styles.rowLabelDanger]}>{label}</Text>
     </PressableScale>
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: COLORS.overlay,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: COLORS.surfaceElevated,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    borderTopWidth: 1,
-    borderColor: COLORS.borderStrong,
-    paddingTop: SIZES.md,
-    paddingBottom: SIZES.xl,
-    ...SHADOWS.medium,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 42,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: COLORS.borderStrong,
-    marginBottom: SIZES.md,
-  },
-  reactionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: SIZES.md,
-    paddingBottom: SIZES.md,
-  },
-  reactionBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: COLORS.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  reactionEmoji: { fontSize: 24 },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginBottom: SIZES.xs,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SIZES.lg,
-    paddingVertical: SIZES.sm + 6,
-    marginHorizontal: SIZES.sm,
-    borderRadius: SIZES.borderRadius,
-  },
-  rowDisabled: { opacity: 0.5 },
-  rowLabel: {
-    ...FONTS.body,
-    color: COLORS.text,
-    marginLeft: SIZES.md,
-  },
-  rowLabelDanger: { color: COLORS.danger },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: colors.surfaceElevated,
+      borderTopLeftRadius: 26,
+      borderTopRightRadius: 26,
+      borderTopWidth: 1,
+      borderColor: colors.borderStrong,
+      paddingTop: SIZES.md,
+      paddingBottom: SIZES.xl,
+      ...SHADOWS.medium,
+    },
+    handle: {
+      alignSelf: 'center',
+      width: 42,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.borderStrong,
+      marginBottom: SIZES.md,
+    },
+    reactionsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      paddingHorizontal: SIZES.md,
+      paddingBottom: SIZES.md,
+    },
+    reactionBtn: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    reactionEmoji: { fontSize: 24 },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginBottom: SIZES.xs,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: SIZES.lg,
+      paddingVertical: SIZES.sm + 6,
+      marginHorizontal: SIZES.sm,
+      borderRadius: SIZES.borderRadius,
+    },
+    rowDisabled: { opacity: 0.5 },
+    rowLabel: {
+      ...FONTS.body,
+      color: colors.text,
+      marginLeft: SIZES.md,
+    },
+    rowLabelDanger: { color: colors.danger },
+  });
+}

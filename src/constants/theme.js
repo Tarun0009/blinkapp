@@ -1,4 +1,4 @@
-export const COLORS = {
+export const DARK_COLORS = {
   primary: '#8EA5FF',
   primaryDark: '#4F6EF7',
   primaryLight: 'rgba(142,165,255,0.18)',
@@ -35,6 +35,48 @@ export const COLORS = {
   highlight: 'rgba(255,255,255,0.06)',
   inputBg: '#0E1626',
 };
+
+export const LIGHT_COLORS = {
+  primary: '#4F6EF7',
+  primaryDark: '#3955D7',
+  primaryLight: 'rgba(79,110,247,0.12)',
+  primarySoft: 'rgba(79,110,247,0.18)',
+  secondary: '#0EA89A',
+  secondaryLight: 'rgba(14,168,154,0.12)',
+  accent: '#DB2777',
+  accentLight: 'rgba(219,39,119,0.12)',
+  background: '#FFFFFF',
+  backgroundSoft: '#F8FAFC',
+  backgroundRaised: '#FFFFFF',
+  surface: '#FFFFFF',
+  surfaceElevated: '#FFFFFF',
+  surfaceAlt: '#F1F5F9',
+  surfacePressed: '#E2E8F0',
+  surfaceGlass: 'rgba(255,255,255,0.88)',
+  text: '#0F172A',
+  textSecondary: '#334155',
+  textLight: '#64748B',
+  white: '#FFFFFF',
+  black: '#000000',
+  online: '#10B981',
+  offline: '#94A3B8',
+  danger: '#E11D48',
+  dangerLight: 'rgba(225,29,72,0.10)',
+  warning: '#D97706',
+  warningLight: 'rgba(217,119,6,0.10)',
+  success: '#10B981',
+  successLight: 'rgba(16,185,129,0.10)',
+  whiteMuted: 'rgba(255,255,255,0.78)',
+  overlay: 'rgba(15,23,42,0.50)',
+  border: 'rgba(15,23,42,0.10)',
+  borderStrong: 'rgba(15,23,42,0.18)',
+  highlight: 'rgba(15,23,42,0.04)',
+  inputBg: '#F1F5F9',
+};
+
+// Backwards compatibility: existing screens import COLORS directly. This stays
+// as the dark palette until each screen is migrated to useTheme().
+export const COLORS = DARK_COLORS;
 
 export const SIZES = {
   xs: 4,

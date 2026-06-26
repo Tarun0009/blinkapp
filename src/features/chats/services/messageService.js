@@ -17,6 +17,14 @@ function normalizeMessage(message) {
     createdAt: message.createdAt ? new Date(message.createdAt) : new Date(),
     deliveredAt: message.deliveredAt ? new Date(message.deliveredAt) : null,
     readAt: message.readAt ? new Date(message.readAt) : null,
+    receiptSummary: message.receiptSummary || null,
+    receipts: Array.isArray(message.receipts)
+      ? message.receipts.map((receipt) => ({
+          ...receipt,
+          deliveredAt: receipt.deliveredAt ? new Date(receipt.deliveredAt) : null,
+          readAt: receipt.readAt ? new Date(receipt.readAt) : null,
+        }))
+      : [],
     editedAt: message.editedAt ? new Date(message.editedAt) : null,
     deletedAt: message.deletedAt ? new Date(message.deletedAt) : null,
     updatedAt: message.updatedAt ? new Date(message.updatedAt) : null,
@@ -29,6 +37,20 @@ function normalizeMessage(message) {
         }
       : null,
   };
+}
+
+function getViewerReceipt(message, uid) {
+  return message.receipts?.find((receipt) => receipt.userId === uid) || null;
+}
+
+function isReadByViewer(message, uid) {
+  const receipt = getViewerReceipt(message, uid);
+  return Boolean(receipt?.readAt) || message.status === 'read';
+}
+
+function isDeliveredToViewer(message, uid) {
+  const receipt = getViewerReceipt(message, uid);
+  return Boolean(receipt?.deliveredAt || receipt?.readAt) || ['delivered', 'read'].includes(message.status);
 }
 
 function sortMessages(messages) {
@@ -149,7 +171,7 @@ export function markMessagesRead(chatId, uid, messages = []) {
   }
 
   const hasUnreadMessages = messages
-    .filter((message) => message.senderId !== uid && message.status !== 'read')
+    .filter((message) => message.senderId !== uid && !isReadByViewer(message, uid))
     .some((message) => Boolean(message.id));
 
   if (!hasUnreadMessages) {
@@ -157,7 +179,7 @@ export function markMessagesRead(chatId, uid, messages = []) {
   }
 
   const messageIds = messages
-    .filter((message) => message.senderId !== uid && message.status !== 'read')
+    .filter((message) => message.senderId !== uid && !isReadByViewer(message, uid))
     .map((message) => message.id)
     .filter(Boolean);
 
@@ -173,7 +195,7 @@ export function markMessagesDelivered(chatId, uid, messages = []) {
   }
 
   const messageIds = messages
-    .filter((message) => message.senderId !== uid && message.status === 'sent')
+    .filter((message) => message.senderId !== uid && !isDeliveredToViewer(message, uid))
     .map((message) => message.id)
     .filter(Boolean);
 
@@ -232,10 +254,43 @@ export function toggleReaction(chatId, messageId, emoji) {
   });
 }
 
-export function addImageMessage(chatId, uid, imageURL) {
-  if (!chatId || !uid || !imageURL) {
+export function uploadMedia(asset) {
+  if (!asset?.base64 || !asset?.mimeType) {
+    return Promise.reject(new Error('Image upload data is missing.'));
+  }
+
+  return backendRequest('/api/media/uploads', {
+    method: 'POST',
+    body: {
+      base64: asset.base64,
+      mimeType: asset.mimeType,
+      fileName: asset.fileName,
+    },
+  }).then((payload = {}) => payload.media);
+}
+
+export async function addImageMessage(chatId, uid, asset, { caption, replyToMessageId } = {}) {
+  if (!chatId || !uid || !asset) {
     return Promise.resolve();
   }
 
-  return Promise.reject(new Error('Image messages are not connected to backend storage yet.'));
+  const media = asset.url ? asset : await uploadMedia(asset);
+  if (!media?.url) {
+    throw new Error('Image upload failed.');
+  }
+
+  return backendRequest(`/api/chats/${chatId}/messages`, {
+    method: 'POST',
+    body: {
+      type: 'image',
+      text: caption?.trim() || '',
+      media: {
+        url: media.url,
+        mimeType: media.mimeType || asset.mimeType || 'image/jpeg',
+        size: media.size || asset.size,
+        fileName: media.fileName || asset.fileName,
+      },
+      ...(replyToMessageId ? { replyToMessageId } : {}),
+    },
+  });
 }

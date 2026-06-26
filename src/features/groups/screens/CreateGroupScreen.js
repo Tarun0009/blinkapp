@@ -17,7 +17,8 @@ import { EmptyState } from '../../../components/EmptyState';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { SearchBar } from '../../../components/SearchBar';
 import { AppIcon } from '../../../components/AppIcon';
-import { COLORS, FONTS, SHADOWS, SIZES } from '../../../constants/theme';
+import { FONTS, SHADOWS, SIZES } from '../../../constants/theme';
+import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useChats } from '../../chats/hooks/useChats';
 import { showErrorAlert } from '../../../utils/errorUtils';
@@ -57,6 +58,8 @@ function matchesSearch(person, search) {
 }
 
 export function CreateGroupScreen({ navigation }) {
+  const { colors, scheme } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const { chats, loading } = useChats(user?.uid);
   const [title, setTitle] = useState('');
@@ -114,6 +117,10 @@ export function CreateGroupScreen({ navigation }) {
           chatName: chat.name || chat.title || title.trim(),
           isGroup: true,
           members: chat.members || [],
+          isPinned: chat.isPinned,
+          isMuted: chat.isMuted,
+          mutedUntil: chat.mutedUntil,
+          isArchived: chat.isArchived,
         });
       } else {
         navigation.goBack();
@@ -127,7 +134,10 @@ export function CreateGroupScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+      <StatusBar
+        barStyle={scheme === 'light' ? 'dark-content' : 'light-content'}
+        backgroundColor={colors.background}
+      />
       <View pointerEvents="none" style={styles.topBand} />
       <KeyboardAvoidingView
         style={styles.keyboard}
@@ -141,7 +151,7 @@ export function CreateGroupScreen({ navigation }) {
         <View style={styles.formCard}>
           <View style={styles.formTop}>
             <View style={styles.formIcon}>
-              <AppIcon name="users" size={20} color={COLORS.white} />
+              <AppIcon name="users" size={20} color={colors.white} />
             </View>
             <View style={styles.formCopy}>
               <Text style={styles.label}>Group profile</Text>
@@ -156,7 +166,7 @@ export function CreateGroupScreen({ navigation }) {
             value={title}
             onChangeText={setTitle}
             placeholder="Weekend squad, project team..."
-            placeholderTextColor={COLORS.textLight}
+            placeholderTextColor={colors.textLight}
             maxLength={80}
             showSoftInputOnFocus
             style={styles.input}
@@ -175,7 +185,7 @@ export function CreateGroupScreen({ navigation }) {
 
         {loading && connectedPeople.length === 0 ? (
           <View style={styles.loaderWrap}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : (
           <FlatList
@@ -230,120 +240,122 @@ export function CreateGroupScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  topBand: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 290,
-    backgroundColor: COLORS.backgroundSoft,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  keyboard: {
-    flex: 1,
-  },
-  formCard: {
-    margin: SIZES.md,
-    padding: SIZES.md,
-    borderRadius: 22,
-    backgroundColor: COLORS.surfaceGlass,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    borderTopColor: COLORS.highlight,
-    ...SHADOWS.soft,
-  },
-  formTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SIZES.sm,
-  },
-  formIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primaryDark,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    marginRight: SIZES.sm,
-    ...SHADOWS.glow,
-  },
-  formCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  label: {
-    ...FONTS.small,
-    color: COLORS.primary,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  formTitle: {
-    ...FONTS.bodyBold,
-    color: COLORS.text,
-    marginTop: 1,
-  },
-  selectedBadge: {
-    minWidth: 54,
-    minHeight: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 16,
-    backgroundColor: COLORS.backgroundRaised,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginLeft: SIZES.sm,
-  },
-  selectedBadgeValue: {
-    ...FONTS.bodyBold,
-    color: COLORS.primary,
-  },
-  selectedBadgeLabel: {
-    ...FONTS.tiny,
-    color: COLORS.textSecondary,
-    textTransform: 'uppercase',
-  },
-  input: {
-    ...FONTS.h3,
-    minHeight: 50,
-    color: COLORS.text,
-    paddingVertical: SIZES.sm,
-    paddingHorizontal: SIZES.md,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderTopColor: COLORS.highlight,
-    backgroundColor: COLORS.inputBg,
-  },
-  helper: {
-    ...FONTS.small,
-    color: COLORS.textSecondary,
-    marginTop: SIZES.sm,
-  },
-  loaderWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingBottom: SIZES.xxl + SIZES.md,
-  },
-  emptyContent: {
-    justifyContent: 'center',
-  },
-  footer: {
-    padding: SIZES.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderStrong,
-    backgroundColor: COLORS.backgroundSoft,
-  },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    },
+    topBand: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 290,
+      backgroundColor: colors.backgroundSoft,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    keyboard: {
+      flex: 1,
+    },
+    formCard: {
+      margin: SIZES.md,
+      padding: SIZES.md,
+      borderRadius: 22,
+      backgroundColor: colors.surfaceGlass,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      borderTopColor: colors.highlight,
+      ...SHADOWS.soft,
+    },
+    formTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: SIZES.sm,
+    },
+    formIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primaryDark,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      marginRight: SIZES.sm,
+      ...SHADOWS.glow,
+    },
+    formCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+    label: {
+      ...FONTS.small,
+      color: colors.primary,
+      fontWeight: '800',
+      textTransform: 'uppercase',
+    },
+    formTitle: {
+      ...FONTS.bodyBold,
+      color: colors.text,
+      marginTop: 1,
+    },
+    selectedBadge: {
+      minWidth: 54,
+      minHeight: 42,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 16,
+      backgroundColor: colors.backgroundRaised,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginLeft: SIZES.sm,
+    },
+    selectedBadgeValue: {
+      ...FONTS.bodyBold,
+      color: colors.primary,
+    },
+    selectedBadgeLabel: {
+      ...FONTS.tiny,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+    input: {
+      ...FONTS.h3,
+      minHeight: 50,
+      color: colors.text,
+      paddingVertical: SIZES.sm,
+      paddingHorizontal: SIZES.md,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderTopColor: colors.highlight,
+      backgroundColor: colors.inputBg,
+    },
+    helper: {
+      ...FONTS.small,
+      color: colors.textSecondary,
+      marginTop: SIZES.sm,
+    },
+    loaderWrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    listContent: {
+      flexGrow: 1,
+      paddingBottom: SIZES.xxl + SIZES.md,
+    },
+    emptyContent: {
+      justifyContent: 'center',
+    },
+    footer: {
+      padding: SIZES.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderStrong,
+      backgroundColor: colors.backgroundSoft,
+    },
+  });
+}

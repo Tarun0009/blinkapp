@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,7 +10,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { COLORS, FONTS, SHADOWS, SIZES } from '../../../constants/theme';
+import { useFocusEffect } from '@react-navigation/native';
+import { FONTS, SHADOWS, SIZES } from '../../../constants/theme';
+import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { ChatListItem } from '../components/ChatListItem';
 import { EmptyState } from '../../../components/EmptyState';
@@ -26,6 +28,8 @@ function getChatName(chat, uid) {
 }
 
 export function ArchivedChatsScreen({ navigation }) {
+  const { colors, scheme } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,9 +47,11 @@ export function ArchivedChatsScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -54,7 +60,10 @@ export function ArchivedChatsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <StatusBar
+        barStyle={scheme === 'light' ? 'dark-content' : 'light-content'}
+        backgroundColor={colors.background}
+      />
       <View style={styles.header}>
         <PressableScale
           accessibilityRole="button"
@@ -65,7 +74,7 @@ export function ArchivedChatsScreen({ navigation }) {
           borderless
           rippleColor={PRESS_FEEDBACK.softRipple}
           style={styles.headerBtn}>
-          <AppIcon name="arrow-left" size={22} color={COLORS.primary} />
+          <AppIcon name="arrow-left" size={22} color={colors.primary} />
         </PressableScale>
         <Text style={styles.title}>Archived</Text>
         <View style={styles.headerBtn} />
@@ -73,7 +82,7 @@ export function ArchivedChatsScreen({ navigation }) {
 
       {loading && chats.length === 0 ? (
         <View style={styles.loaderWrap}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -83,8 +92,8 @@ export function ArchivedChatsScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
             />
           }
           renderItem={({ item }) => (
@@ -101,6 +110,13 @@ export function ArchivedChatsScreen({ navigation }) {
                   isGroup: item.type === 'group',
                   members: item.members || [],
                   otherUserId: other?.id || null,
+                  isPinned: item.isPinned,
+                  isMuted: item.isMuted,
+                  mutedUntil: item.mutedUntil,
+                  isArchived: item.isArchived,
+                  isBlocked: item.isBlocked,
+                  blockedByMe: item.blockedByMe,
+                  blockedByUserId: item.blockedByUserId,
                 });
               }}
               onLongPress={() => {
@@ -114,6 +130,9 @@ export function ArchivedChatsScreen({ navigation }) {
                   isMuted: item.isMuted,
                   mutedUntil: item.mutedUntil,
                   isArchived: item.isArchived,
+                  isBlocked: item.isBlocked,
+                  blockedByMe: item.blockedByMe,
+                  blockedByUserId: item.blockedByUserId,
                   isGroup: item.type === 'group',
                   members: item.members || [],
                   otherUserId: other?.id || null,
@@ -139,25 +158,27 @@ export function ArchivedChatsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SIZES.md,
-    paddingVertical: SIZES.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    ...SHADOWS.small,
-  },
-  headerBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  title: { ...FONTS.h3, color: COLORS.text, flex: 1, textAlign: 'center' },
-  loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  listContent: { flexGrow: 1, paddingTop: SIZES.sm, paddingBottom: SIZES.xl },
-  emptyListContent: { justifyContent: 'center' },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: SIZES.md,
+      paddingVertical: SIZES.sm + 2,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.surface,
+      ...SHADOWS.small,
+    },
+    headerBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    title: { ...FONTS.h3, color: colors.text, flex: 1, textAlign: 'center' },
+    loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    listContent: { flexGrow: 1, paddingTop: SIZES.sm, paddingBottom: SIZES.xl },
+    emptyListContent: { justifyContent: 'center' },
+  });
+}

@@ -27,6 +27,12 @@ enum ReportStatus {
   ACTIONED
 }
 
+enum DevicePlatform {
+  ANDROID
+  IOS
+  WEB
+}
+
 model User {
   id              String          @id @default(cuid())
   firebaseUid     String          @unique
@@ -44,11 +50,40 @@ model User {
   chatMembers     ChatMember[]
   messages        Message[]
   reactions       MessageReaction[]
+  messageReceipts MessageReceipt[]
   chatPreferences ChatPreference[]
   blocksMade      BlockedUser[]   @relation("BlockerBlocks")
   blocksReceived  BlockedUser[]   @relation("BlockedTarget")
   reportsMade     UserReport[]    @relation("ReportReporter")
   reportsReceived UserReport[]    @relation("ReportTarget")
+  deviceTokens    DeviceToken[]
+  notificationPreference NotificationPreference?
+}
+
+model DeviceToken {
+  id          String         @id @default(cuid())
+  userId      String
+  token       String         @unique
+  platform    DevicePlatform
+  appVersion  String?
+  createdAt   DateTime       @default(now())
+  lastSeenAt  DateTime       @default(now())
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  messagesEnabled       Boolean  @default(true)
+  friendRequestsEnabled Boolean  @default(true)
+  groupInvitesEnabled   Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FriendRequest {
@@ -70,6 +105,7 @@ model Chat {
   id          String       @id @default(cuid())
   isGroup     Boolean      @default(false)
   title       String?
+  photoURL    String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -131,6 +167,7 @@ model ChatMember {
   id        String   @id @default(cuid())
   chatId    String
   userId    String
+  role      String   @default("MEMBER")
   joinedAt  DateTime @default(now())
 
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
@@ -138,6 +175,7 @@ model ChatMember {
 
   @@unique([chatId, userId])
   @@index([userId])
+  @@index([chatId, role])
 }
 
 model Message {
@@ -145,6 +183,11 @@ model Message {
   chatId           String
   senderId         String
   text             String
+  type             String        @default("text")
+  mediaUrl         String?
+  mediaMimeType    String?
+  mediaSize        Int?
+  mediaName        String?
   status           MessageStatus @default(SENT)
   deliveredAt      DateTime?
   readAt           DateTime?
@@ -159,9 +202,11 @@ model Message {
   replyTo          Message?      @relation("MessageReply", fields: [replyToMessageId], references: [id], onDelete: SetNull)
   replies          Message[]     @relation("MessageReply")
   reactions        MessageReaction[]
+  receipts         MessageReceipt[]
 
   @@index([chatId, createdAt])
   @@index([senderId])
+  @@index([type])
   @@index([replyToMessageId])
 }
 
@@ -178,3 +223,22 @@ model MessageReaction {
   @@unique([messageId, userId, emoji])
   @@index([messageId])
 }
+
+model MessageReceipt {
+  id          String   @id @default(cuid())
+  messageId   String
+  userId      String
+  deliveredAt DateTime?
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, readAt])
+  @@index([messageId])
+}
+
+

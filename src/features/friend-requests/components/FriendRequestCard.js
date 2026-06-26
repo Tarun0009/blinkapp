@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { COLORS, FONTS, SHADOWS, SIZES } from '../../../constants/theme';
+import { FONTS, SHADOWS, SIZES } from '../../../constants/theme';
+import { useTheme } from '../../../theme/ThemeContext';
 import { AppIcon } from '../../../components/AppIcon';
 import { PRESS_FEEDBACK, PressableScale } from '../../../components/PressableScale';
 import { UserAvatar } from '../../../components/UserAvatar';
 
 export function FriendRequestCard({ request, onAccept, onReject }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.requestCard}>
       <UserAvatar name={request.senderName} size={50} />
@@ -23,7 +27,7 @@ export function FriendRequestCard({ request, onAccept, onReject }) {
           rippleColor={PRESS_FEEDBACK.lightRipple}
           borderless
           onPress={() => onAccept(request)}>
-          <AppIcon name="check" size={18} color={COLORS.white} />
+          <AppIcon name="check" size={18} color={colors.white} />
         </PressableScale>
         <PressableScale
           accessibilityRole="button"
@@ -34,41 +38,43 @@ export function FriendRequestCard({ request, onAccept, onReject }) {
           rippleColor={PRESS_FEEDBACK.softRipple}
           borderless
           onPress={() => onReject(request.id)}>
-          <AppIcon name="close" size={18} color={COLORS.textSecondary} />
+          <AppIcon name="close" size={18} color={colors.textSecondary} />
         </PressableScale>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  requestCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SIZES.md,
-    marginHorizontal: SIZES.md,
-    marginTop: SIZES.sm,
-    backgroundColor: COLORS.surfaceGlass,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    borderTopColor: COLORS.highlight,
-    ...SHADOWS.soft,
-  },
-  info: { flex: 1, marginLeft: SIZES.sm },
-  name: { ...FONTS.bodyBold, color: COLORS.text },
-  msg: { ...FONTS.caption, color: COLORS.textSecondary },
-  actions: { flexDirection: 'row' },
-  btn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    marginLeft: SIZES.xs,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  acceptBtn: { backgroundColor: COLORS.primaryDark, borderColor: COLORS.primary },
-  rejectBtn: { backgroundColor: COLORS.backgroundRaised },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    requestCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: SIZES.md,
+      marginHorizontal: SIZES.md,
+      marginTop: SIZES.sm,
+      backgroundColor: colors.surfaceGlass,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      borderTopColor: colors.highlight,
+      ...SHADOWS.soft,
+    },
+    info: { flex: 1, marginLeft: SIZES.sm },
+    name: { ...FONTS.bodyBold, color: colors.text },
+    msg: { ...FONTS.caption, color: colors.textSecondary },
+    actions: { flexDirection: 'row' },
+    btn: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 18,
+      marginLeft: SIZES.xs,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    acceptBtn: { backgroundColor: colors.primaryDark, borderColor: colors.primary },
+    rejectBtn: { backgroundColor: colors.backgroundRaised },
+  });
+}

@@ -5,6 +5,7 @@ import { prisma } from '../../config/prisma.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { redis } from '../../config/redis.js';
 import { badRequest, conflict } from '../../shared/http/errors.js';
+import { findDirectChat, getChatForUser, emitViewerChatsUpdated } from '../chats/chats.service.js';
 import { getRouteParam } from '../../shared/http/params.js';
 import { profileRateLimit, reportRateLimit, writeRateLimit } from '../../middleware/rate-limit.js';
 import { getFriendlyDisplayName, toApiUser, toPublicApiUser } from './users.mapper.js';
@@ -71,6 +72,16 @@ const reportSchema = z.object({
   reason: z.enum(Array.from(REPORT_REASONS) as [string, ...string[]]),
   details: z.string().trim().max(500).optional(),
 });
+
+async function emitDirectChatBlockState(currentUserId: string, targetUserId: string) {
+  const chat = await findDirectChat(currentUserId, targetUserId);
+  if (!chat) {
+    return null;
+  }
+
+  await emitViewerChatsUpdated(chat.id, [currentUserId, targetUserId]);
+  return getChatForUser(chat.id, currentUserId);
+}
 
 export const usersRouter = Router();
 
@@ -263,7 +274,13 @@ usersRouter.get('/search', requireAuth, async (req, res, next) => {
       take: 20,
     });
 
-    res.json({ users: users.map(user => toPublicApiUser(user)) });
+    const onlineKeys = users.length
+      ? await redis.mget(users.map(user => `presence:${user.id}`))
+      : [];
+
+    res.json({
+      users: users.map((user, index) => toPublicApiUser(user, onlineKeys[index] === 'online')),
+    });
   } catch (error) {
     next(error);
   }
@@ -290,7 +307,8 @@ usersRouter.post('/:userId/block', requireAuth, writeRateLimit, async (req, res,
     const targetFirebaseUid = getRouteParam(req.params.userId, 'userId');
     const target = await findUserByFirebaseUid(targetFirebaseUid);
     await blockUser(req.auth!.user.id, target.id);
-    res.status(204).end();
+    const chat = await emitDirectChatBlockState(req.auth!.user.id, target.id);
+    res.json({ chat });
   } catch (error) {
     next(error);
   }
@@ -301,7 +319,8 @@ usersRouter.delete('/:userId/block', requireAuth, writeRateLimit, async (req, re
     const targetFirebaseUid = getRouteParam(req.params.userId, 'userId');
     const target = await findUserByFirebaseUid(targetFirebaseUid);
     await unblockUser(req.auth!.user.id, target.id);
-    res.status(204).end();
+    const chat = await emitDirectChatBlockState(req.auth!.user.id, target.id);
+    res.json({ chat });
   } catch (error) {
     next(error);
   }

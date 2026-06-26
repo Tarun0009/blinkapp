@@ -47,6 +47,8 @@ yarn-error.log
 # Personal notes / docs drafts — keep README.md only
 *.md
 !README.md
+!docs/
+!docs/FEATURE_ROADMAP.md
 
 .env
 backend/.env

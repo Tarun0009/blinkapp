@@ -41,17 +41,30 @@ export function formatChatDate(date) {
 }
 
 export function formatLastSeen(date) {
-  if (!date) return 'Unknown';
+  if (!date) return '';
   const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+
   const now = new Date();
   const diff = now - d;
-  const mins = Math.floor(diff / 60000);
+  const mins = Math.max(0, Math.floor(diff / 60000));
 
   if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 60) return `${mins}m ago`;
 
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
 
-  return `last seen ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export function formatPresenceStatus({ online, lastSeen } = {}) {
+  if (online) return 'Active now';
+
+  const lastSeenLabel = formatLastSeen(lastSeen);
+  return lastSeenLabel ? `Last seen ${lastSeenLabel}` : 'Offline';
 }

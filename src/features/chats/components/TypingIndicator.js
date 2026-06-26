@@ -1,8 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
-import { COLORS, SIZES, FONTS, SHADOWS } from '../../../constants/theme';
+import { SIZES, FONTS, SHADOWS } from '../../../constants/theme';
+import { useTheme } from '../../../theme/ThemeContext';
 
 export function TypingIndicator({ names = [] }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
@@ -56,27 +59,29 @@ export function TypingIndicator({ names = [] }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SIZES.md,
-    paddingVertical: SIZES.sm,
-    marginHorizontal: SIZES.md,
-    marginBottom: SIZES.xs,
-    borderRadius: SIZES.borderRadiusLg,
-    backgroundColor: COLORS.surfaceElevated,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.small,
-  },
-  text: { ...FONTS.small, color: COLORS.textSecondary, marginRight: SIZES.xs },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.textSecondary,
-    marginHorizontal: 2,
-  },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: SIZES.md,
+      paddingVertical: SIZES.sm,
+      marginHorizontal: SIZES.md,
+      marginBottom: SIZES.xs,
+      borderRadius: SIZES.borderRadiusLg,
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...SHADOWS.small,
+    },
+    text: { ...FONTS.small, color: colors.textSecondary, marginRight: SIZES.xs },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.textSecondary,
+      marginHorizontal: 2,
+    },
+  });
+}

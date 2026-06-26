@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
-import { COLORS, SIZES, FONTS, SHADOWS } from '../../../constants/theme';
+import { SIZES, FONTS } from '../../../constants/theme';
+import { useTheme } from '../../../theme/ThemeContext';
 import { formatMessageTime } from '../../../utils/formatTime';
 import { PressableScale } from '../../../components/PressableScale';
 import { AppIcon } from '../../../components/AppIcon';
 import { UserAvatar } from '../../../components/UserAvatar';
 
-function ReceiptTicks({ status }) {
+function ReceiptTicks({ status, colors, styles }) {
   const normalizedStatus = status || 'sent';
   const isDoubleTick = normalizedStatus === 'delivered' || normalizedStatus === 'read';
-  const color = normalizedStatus === 'read' ? COLORS.secondary : COLORS.whiteMuted;
+  const color = normalizedStatus === 'read' ? colors.secondary : colors.whiteMuted;
 
   return (
     <View style={styles.receiptWrap}>
@@ -21,7 +22,7 @@ function ReceiptTicks({ status }) {
   );
 }
 
-function ReplyPreview({ reply, isMe }) {
+function ReplyPreview({ reply, isMe, styles }) {
   if (!reply) return null;
   const previewText = reply.deletedAt ? 'Message deleted' : reply.text || 'Message';
   return (
@@ -45,7 +46,7 @@ function ReplyPreview({ reply, isMe }) {
   );
 }
 
-function ReactionChips({ reactions, currentUid, isMe, onPress }) {
+function ReactionChips({ reactions, currentUid, isMe, onPress, styles }) {
   if (!reactions || reactions.length === 0) return null;
   return (
     <View style={[styles.reactionsRow, isMe ? styles.reactionsRowMe : styles.reactionsRowOther]}>
@@ -74,6 +75,8 @@ function ReactionChips({ reactions, currentUid, isMe, onPress }) {
 
 export function MessageBubble({
   highlightNewMessage = false,
+  showSeenLabel = false,
+  seenLabel = 'Seen',
   message,
   isMe,
   currentUid,
@@ -81,9 +84,13 @@ export function MessageBubble({
   onLongPress,
   onReactionPress,
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isImage = message.type === 'image';
   const isDeleted = !!message.deletedAt;
   const isEdited = !!message.editedAt && !isDeleted;
+  const isLocalPending = ['pending', 'failed'].includes(message.pendingStatus);
+  const pendingLabel = message.pendingStatus === 'failed' ? 'Failed' : 'Sending';
   const senderName = message.sender?.displayName || message.sender?.username || 'Blink User';
   const senderPhoto = message.sender?.photoURL;
 
@@ -115,21 +122,14 @@ export function MessageBubble({
             highlightNewMessage && !isMe && styles.bubbleNewIncoming,
             isDeleted && styles.bubbleDeleted,
           ]}>
-          {highlightNewMessage && !isMe ? (
-            <View style={styles.newMessagePill}>
-              <View style={styles.newMessageDot} />
-              <Text style={styles.newMessageText}>New message</Text>
-            </View>
-          ) : null}
-
-          {message.replyTo ? <ReplyPreview reply={message.replyTo} isMe={isMe} /> : null}
+          {message.replyTo ? <ReplyPreview reply={message.replyTo} isMe={isMe} styles={styles} /> : null}
 
           {isDeleted ? (
             <View style={styles.deletedRow}>
               <AppIcon
                 name="close-circle"
                 size={14}
-                color={isMe ? COLORS.whiteMuted : COLORS.textLight}
+                color={isMe ? colors.whiteMuted : colors.textLight}
               />
               <Text
                 style={[
@@ -161,17 +161,23 @@ export function MessageBubble({
             </>
           )}
 
-          <View style={[styles.metaRow, isMe ? styles.metaRowMe : styles.metaRowOther]}>
+          <View style={styles.metaRow}>
             {isEdited ? (
-              <Text
-                style={[styles.editedTag, isMe ? styles.editedTagMe : styles.editedTagOther]}>
+              <Text style={[styles.editedTag, isMe ? styles.editedTagMe : styles.editedTagOther]}>
                 edited ·{' '}
               </Text>
             ) : null}
             <Text style={[styles.time, isMe ? styles.timeMe : styles.timeOther]}>
               {formatMessageTime(message.createdAt)}
             </Text>
-            {isMe && !isDeleted ? <ReceiptTicks status={message.status} /> : null}
+            {isMe && !isDeleted && !isLocalPending ? (
+              <ReceiptTicks status={message.status} colors={colors} styles={styles} />
+            ) : null}
+            {isMe && isLocalPending ? (
+              <Text style={[styles.pendingText, message.pendingStatus === 'failed' && styles.failedText]}>
+                {' · '}{pendingLabel}
+              </Text>
+            ) : null}
           </View>
         </PressableScale>
 
@@ -180,201 +186,171 @@ export function MessageBubble({
           currentUid={currentUid}
           isMe={isMe}
           onPress={(emoji) => onReactionPress?.(message, emoji)}
+          styles={styles}
         />
+        {showSeenLabel && isMe ? <Text style={styles.seenLabel}>{seenLabel}</Text> : null}
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginVertical: 6,
-    paddingHorizontal: SIZES.md,
-  },
-  rowMe: { justifyContent: 'flex-end' },
-  rowOther: { justifyContent: 'flex-start' },
-  avatarSlot: {
-    width: 36,
-    alignItems: 'flex-start',
-    marginRight: SIZES.xs + 1,
-    marginBottom: 2,
-  },
-  messageColumn: {
-    maxWidth: '82%',
-    minWidth: 0,
-  },
-  messageColumnMe: {
-    alignItems: 'flex-end',
-  },
-  messageColumnOther: {
-    alignItems: 'flex-start',
-  },
-  senderName: {
-    ...FONTS.tiny,
-    color: COLORS.textLight,
-    marginBottom: 4,
-    marginLeft: SIZES.xs,
-    maxWidth: 180,
-    textTransform: 'uppercase',
-    letterSpacing: 0,
-  },
-  bubble: {
-    borderRadius: 18,
-    paddingHorizontal: SIZES.md,
-    paddingVertical: SIZES.sm + 3,
-    minHeight: 40,
-    maxWidth: '100%',
-    ...SHADOWS.small,
-  },
-  bubbleMe: {
-    backgroundColor: COLORS.primaryDark,
-    borderTopRightRadius: 18,
-    borderBottomRightRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    shadowColor: COLORS.primaryDark,
-  },
-  bubbleOther: {
-    backgroundColor: COLORS.surfaceGlass,
-    borderTopLeftRadius: 18,
-    borderBottomLeftRadius: 6,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    borderTopColor: COLORS.highlight,
-  },
-  bubbleNewIncoming: {
-    backgroundColor: COLORS.primarySoft,
-    borderColor: COLORS.primary,
-    shadowColor: COLORS.primaryDark,
-    ...SHADOWS.glow,
-  },
-  bubbleDeleted: {
-    opacity: 0.84,
-  },
-  newMessagePill: {
-    alignSelf: 'flex-start',
-    minHeight: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SIZES.sm,
-    borderRadius: 11,
-    backgroundColor: COLORS.backgroundRaised,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    marginBottom: SIZES.xs,
-  },
-  newMessageDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: COLORS.primary,
-    marginRight: SIZES.xs,
-  },
-  newMessageText: {
-    ...FONTS.tiny,
-    color: COLORS.primary,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  text: { ...FONTS.body, letterSpacing: 0 },
-  textMe: { color: COLORS.white },
-  textOther: { color: COLORS.text },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  metaRowMe: { alignSelf: 'flex-end' },
-  metaRowOther: { alignSelf: 'flex-end' },
-  time: { ...FONTS.tiny },
-  timeMe: { color: COLORS.whiteMuted },
-  timeOther: { color: COLORS.textLight },
-  receiptWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 4,
-    width: 18,
-  },
-  receiptSecondIcon: {
-    marginLeft: -7,
-  },
-  image: {
-    width: 200,
-    height: 200,
-    borderRadius: SIZES.cardRadius,
-    marginBottom: SIZES.xs,
-    backgroundColor: COLORS.surfaceAlt,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-  },
-  editedTag: { ...FONTS.tiny, fontStyle: 'italic' },
-  editedTagMe: { color: COLORS.whiteMuted },
-  editedTagOther: { color: COLORS.textLight },
-  replyPreview: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    marginBottom: 6,
-    overflow: 'hidden',
-  },
-  replyPreviewMe: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  replyPreviewOther: { backgroundColor: COLORS.backgroundRaised },
-  replyAccent: {
-    width: 3,
-    alignSelf: 'stretch',
-    borderRadius: 2,
-    marginRight: 8,
-  },
-  replyAccentMe: { backgroundColor: COLORS.white },
-  replyAccentOther: { backgroundColor: COLORS.primary },
-  replyBody: { flex: 1, minWidth: 0 },
-  replyName: { ...FONTS.small, fontWeight: '700' },
-  replyNameMe: { color: COLORS.white },
-  replyNameOther: { color: COLORS.primary },
-  replyText: { ...FONTS.small },
-  replyTextMe: { color: COLORS.whiteMuted },
-  replyTextOther: { color: COLORS.textSecondary },
-  deletedRow: { flexDirection: 'row', alignItems: 'center' },
-  deletedText: { ...FONTS.body, fontStyle: 'italic', marginLeft: 6 },
-  deletedTextMe: { color: COLORS.whiteMuted },
-  deletedTextOther: { color: COLORS.textLight },
-  reactionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    maxWidth: '100%',
-    marginTop: 5,
-    marginHorizontal: SIZES.xs,
-  },
-  reactionsRowMe: {
-    alignSelf: 'flex-end',
-    justifyContent: 'flex-end',
-  },
-  reactionsRowOther: {
-    alignSelf: 'flex-start',
-    justifyContent: 'flex-start',
-  },
-  reactionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 25,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 13,
-    backgroundColor: COLORS.surfaceGlass,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    marginRight: 4,
-    marginTop: 2,
-    ...SHADOWS.small,
-  },
-  reactionChipMine: {
-    backgroundColor: COLORS.primaryLight,
-    borderColor: COLORS.primary,
-  },
-  reactionEmoji: { fontSize: 14 },
-  reactionCount: { ...FONTS.tiny, color: COLORS.textSecondary, marginLeft: 4, fontWeight: '600' },
-  reactionCountMine: { color: COLORS.primary },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      marginVertical: 3,
+      paddingHorizontal: SIZES.md,
+    },
+    rowMe: { justifyContent: 'flex-end' },
+    rowOther: { justifyContent: 'flex-start' },
+    avatarSlot: {
+      width: 32,
+      alignItems: 'flex-start',
+      marginRight: SIZES.xs + 2,
+      marginBottom: 2,
+    },
+    messageColumn: {
+      maxWidth: '78%',
+      minWidth: 0,
+    },
+    messageColumnMe: { alignItems: 'flex-end' },
+    messageColumnOther: { alignItems: 'flex-start' },
+    senderName: {
+      ...FONTS.tiny,
+      color: colors.textLight,
+      fontWeight: '700',
+      marginBottom: 3,
+      marginLeft: SIZES.sm,
+      maxWidth: 180,
+    },
+    bubble: {
+      borderRadius: 18,
+      paddingHorizontal: SIZES.md - 2,
+      paddingVertical: SIZES.sm + 2,
+      minHeight: 38,
+      maxWidth: '100%',
+    },
+    bubbleMe: {
+      backgroundColor: colors.primaryDark,
+      borderBottomRightRadius: 6,
+    },
+    bubbleOther: {
+      backgroundColor: colors.surfaceElevated,
+      borderBottomLeftRadius: 6,
+    },
+    bubbleNewIncoming: {
+      backgroundColor: colors.primarySoft,
+    },
+    bubbleDeleted: {
+      opacity: 0.78,
+    },
+    text: { ...FONTS.body, lineHeight: 22 },
+    textMe: { color: colors.white },
+    textOther: { color: colors.text },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-end',
+      marginTop: 4,
+    },
+    time: { ...FONTS.tiny },
+    timeMe: { color: colors.whiteMuted },
+    timeOther: { color: colors.textLight },
+    receiptWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: 4,
+      width: 18,
+    },
+    receiptSecondIcon: {
+      marginLeft: -7,
+    },
+    image: {
+      width: 200,
+      height: 200,
+      borderRadius: SIZES.cardRadius,
+      marginBottom: SIZES.xs,
+      backgroundColor: colors.surfaceAlt,
+    },
+    editedTag: { ...FONTS.tiny, fontStyle: 'italic' },
+    editedTagMe: { color: colors.whiteMuted },
+    editedTagOther: { color: colors.textLight },
+    replyPreview: {
+      flexDirection: 'row',
+      borderRadius: 10,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      marginBottom: 6,
+      overflow: 'hidden',
+    },
+    replyPreviewMe: { backgroundColor: 'rgba(255,255,255,0.14)' },
+    replyPreviewOther: { backgroundColor: colors.backgroundRaised },
+    replyAccent: {
+      width: 3,
+      alignSelf: 'stretch',
+      borderRadius: 2,
+      marginRight: 8,
+    },
+    replyAccentMe: { backgroundColor: colors.white },
+    replyAccentOther: { backgroundColor: colors.primary },
+    replyBody: { flex: 1, minWidth: 0 },
+    replyName: { ...FONTS.small, fontWeight: '700' },
+    replyNameMe: { color: colors.white },
+    replyNameOther: { color: colors.primary },
+    replyText: { ...FONTS.small },
+    replyTextMe: { color: colors.whiteMuted },
+    replyTextOther: { color: colors.textSecondary },
+    deletedRow: { flexDirection: 'row', alignItems: 'center' },
+    deletedText: { ...FONTS.body, fontStyle: 'italic', marginLeft: 6 },
+    deletedTextMe: { color: colors.whiteMuted },
+    deletedTextOther: { color: colors.textLight },
+    reactionsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      maxWidth: '100%',
+      marginTop: 4,
+      marginHorizontal: 4,
+    },
+    reactionsRowMe: {
+      alignSelf: 'flex-end',
+      justifyContent: 'flex-end',
+    },
+    reactionsRowOther: {
+      alignSelf: 'flex-start',
+      justifyContent: 'flex-start',
+    },
+    reactionChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: 24,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceElevated,
+      marginRight: 4,
+      marginTop: 3,
+    },
+    reactionChipMine: {
+      backgroundColor: colors.primaryLight,
+    },
+    reactionEmoji: { fontSize: 13 },
+    reactionCount: { ...FONTS.tiny, color: colors.textSecondary, marginLeft: 4, fontWeight: '600' },
+    reactionCountMine: { color: colors.primary },
+    pendingText: {
+      ...FONTS.tiny,
+      color: colors.whiteMuted,
+      fontWeight: '800',
+    },
+    failedText: {
+      color: colors.danger,
+    },
+    seenLabel: {
+      ...FONTS.tiny,
+      color: colors.textLight,
+      fontWeight: '800',
+      marginTop: 3,
+      marginRight: 6,
+    },
+  });
+}
