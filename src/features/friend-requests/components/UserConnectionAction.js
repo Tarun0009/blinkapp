@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { COLORS, FONTS, SIZES } from '../../../constants/theme';
+import { FONTS, SIZES } from '../../../constants/theme';
+import { useTheme } from '../../../theme/ThemeContext';
 import { AppIcon } from '../../../components/AppIcon';
 import { PRESS_FEEDBACK, PressableScale } from '../../../components/PressableScale';
 
@@ -20,6 +21,9 @@ export function UserConnectionAction({
   onConnect,
   onReject,
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   if (connectionState.type === 'incoming') {
     return (
       <View style={styles.incomingActions}>
@@ -35,9 +39,9 @@ export function UserConnectionAction({
           onPress={onReject}
           disabled={isRejecting}>
           {isRejecting ? (
-            <ActivityIndicator size="small" color={COLORS.textSecondary} />
+            <ActivityIndicator size="small" color={colors.textSecondary} />
           ) : (
-            <AppIcon name="close" size={18} color={COLORS.textSecondary} />
+            <AppIcon name="close" size={18} color={colors.textSecondary} />
           )}
         </PressableScale>
         <PressableScale
@@ -52,9 +56,9 @@ export function UserConnectionAction({
           onPress={onAccept}
           disabled={isAccepting}>
           {isAccepting ? (
-            <ActivityIndicator size="small" color={COLORS.white} />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
-            <AppIcon name="check" size={18} color={COLORS.white} />
+            <AppIcon name="check" size={18} color={colors.white} />
           )}
         </PressableScale>
       </View>
@@ -91,13 +95,13 @@ export function UserConnectionAction({
       onPress={onConnect}
       disabled={isRequesting}>
       {isRequesting ? (
-        <ActivityIndicator size="small" color={COLORS.white} />
+        <ActivityIndicator size="small" color={colors.white} />
       ) : (
         <>
           <AppIcon
             name="account-plus"
             size={16}
-            color={COLORS.white}
+            color={colors.white}
             style={styles.connectIcon}
           />
           <Text style={styles.connectBtnText}>Connect</Text>
@@ -107,42 +111,44 @@ export function UserConnectionAction({
   );
 }
 
-const styles = StyleSheet.create({
-  incomingActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  requestActionBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    marginLeft: SIZES.xs,
-  },
-  connectBtn: {
-    backgroundColor: COLORS.primaryDark,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SIZES.sm + 4,
-    paddingVertical: SIZES.xs + 2,
-    borderRadius: SIZES.borderRadius,
-  },
-  acceptBtn: {
-    backgroundColor: COLORS.primaryDark,
-  },
-  rejectBtn: { backgroundColor: COLORS.surfaceAlt },
-  connectIcon: { marginRight: SIZES.xs },
-  connectBtnText: { ...FONTS.small, color: COLORS.white, fontWeight: 'bold' },
-  statusBadge: {
-    paddingHorizontal: SIZES.sm,
-    paddingVertical: SIZES.xs,
-    borderRadius: SIZES.borderRadius,
-    backgroundColor: COLORS.surfaceAlt,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  statusAccepted: { backgroundColor: COLORS.primaryLight },
-  statusText: { ...FONTS.small, color: COLORS.textSecondary, fontWeight: '600' },
-  statusTextAccepted: { color: COLORS.primary },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    incomingActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    requestActionBtn: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 18,
+      marginLeft: SIZES.xs,
+    },
+    connectBtn: {
+      backgroundColor: colors.primaryDark,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: SIZES.sm + 4,
+      paddingVertical: SIZES.xs + 2,
+      borderRadius: SIZES.borderRadius,
+    },
+    acceptBtn: {
+      backgroundColor: colors.primaryDark,
+    },
+    rejectBtn: { backgroundColor: colors.surfaceAlt },
+    connectIcon: { marginRight: SIZES.xs },
+    connectBtnText: { ...FONTS.small, color: colors.white, fontWeight: 'bold' },
+    statusBadge: {
+      paddingHorizontal: SIZES.sm,
+      paddingVertical: SIZES.xs,
+      borderRadius: SIZES.borderRadius,
+      backgroundColor: colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    statusAccepted: { backgroundColor: colors.primaryLight },
+    statusText: { ...FONTS.small, color: colors.textSecondary, fontWeight: '600' },
+    statusTextAccepted: { color: colors.primary },
+  });
+}

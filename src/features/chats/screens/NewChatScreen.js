@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
-import { COLORS, SIZES, FONTS, SHADOWS } from '../../../constants/theme';
+import { SIZES, FONTS, SHADOWS } from '../../../constants/theme';
+import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useChats } from '../hooks/useChats';
 import { useFriendRequests } from '../../friend-requests/hooks/useFriendRequests';
@@ -23,8 +24,13 @@ import { EmptyState } from '../../../components/EmptyState';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { AppIcon } from '../../../components/AppIcon';
 import { getPublicErrorMessage, showErrorAlert } from '../../../utils/errorUtils';
+import { formatPresenceStatus } from '../../../utils/formatTime';
+import { realtimeClient } from '../../../realtime/socketClient';
+import { SOCKET_EVENTS } from '../../../realtime/socketEvents';
 
 export function NewChatScreen({ navigation }) {
+  const { colors, scheme } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, userProfile } = useAuth();
   const { chats } = useChats(user?.uid);
   const {
@@ -80,6 +86,34 @@ export function NewChatScreen({ navigation }) {
     loadUsers();
   }, [loadUsers]);
 
+  useEffect(() => {
+    const handlePresence = (payload = {}) => {
+      const targetId = payload.userId || payload.uid;
+      if (!targetId) return;
+
+      const lastSeenValue = payload.lastSeen || payload.lastSeenAt;
+      setUsers((current) =>
+        current.map((person) =>
+          person.id === targetId
+            ? {
+                ...person,
+                online: Boolean(payload.online),
+                lastSeenAt: payload.online ? person.lastSeenAt : lastSeenValue || person.lastSeenAt,
+              }
+            : person,
+        ),
+      );
+    };
+
+    const unsubscribeOnline = realtimeClient.on(SOCKET_EVENTS.PRESENCE_ONLINE, handlePresence);
+    const unsubscribeOffline = realtimeClient.on(SOCKET_EVENTS.PRESENCE_OFFLINE, handlePresence);
+
+    return () => {
+      unsubscribeOnline();
+      unsubscribeOffline();
+    };
+  }, []);
+
   const handleRefresh = () => {
     setRefreshing(true);
     loadUsers();
@@ -109,6 +143,16 @@ export function NewChatScreen({ navigation }) {
         navigation.replace('ChatRoom', {
           chatId: chat.id,
           chatName: getPublicName(otherUser, request.senderName || 'Chat'),
+          isGroup: false,
+          members: chat.members || [],
+          otherUserId: otherUser.id,
+          isPinned: chat.isPinned,
+          isMuted: chat.isMuted,
+          mutedUntil: chat.mutedUntil,
+          isArchived: chat.isArchived,
+          isBlocked: chat.isBlocked,
+          blockedByMe: chat.blockedByMe,
+          blockedByUserId: chat.blockedByUserId,
         });
       } else {
         Alert.alert(
@@ -168,7 +212,9 @@ export function NewChatScreen({ navigation }) {
       return { type: 'incoming', request: incoming };
     }
 
-    const outgoing = outgoingRequests.find((request) => request.receiverId === otherUserId);
+    const outgoing = outgoingRequests.find(
+      (request) => request.receiverId === otherUserId && request.status === 'pending',
+    );
     if (outgoing) {
       return { type: 'outgoing', status: outgoing.status };
     }
@@ -185,7 +231,10 @@ export function NewChatScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+      <StatusBar
+        barStyle={scheme === 'light' ? 'dark-content' : 'light-content'}
+        backgroundColor={colors.background}
+      />
       <View pointerEvents="none" style={styles.topBand} />
       <ScreenHeader
         title="New Chat"
@@ -195,7 +244,7 @@ export function NewChatScreen({ navigation }) {
 
       <View style={styles.discoveryCard}>
         <View style={styles.discoveryIcon}>
-          <AppIcon name="account-search-outline" size={22} color={COLORS.white} />
+          <AppIcon name="account-search-outline" size={22} color={colors.white} />
         </View>
         <View style={styles.discoveryCopy}>
           <Text style={styles.discoveryTitle}>Discover people</Text>
@@ -217,7 +266,7 @@ export function NewChatScreen({ navigation }) {
       />
 
       {loading ? (
-        <ActivityIndicator style={styles.loader} size="large" color={COLORS.primary} />
+        <ActivityIndicator style={styles.loader} size="large" color={colors.primary} />
       ) : (
         <>
           <View style={styles.listHeader}>
@@ -233,13 +282,17 @@ export function NewChatScreen({ navigation }) {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                colors={[COLORS.primary]}
-                tintColor={COLORS.primary}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
               />
             }
             renderItem={({ item }) => {
               const connectionState = getConnectionState(item.id);
               const displayName = getPublicName(item, 'Anonymous User');
+              const presenceLabel = formatPresenceStatus({
+                online: item.online,
+                lastSeen: item.lastSeenAt,
+              });
 
               return (
                 <View style={styles.userRow}>
@@ -258,12 +311,8 @@ export function NewChatScreen({ navigation }) {
                           item.online ? styles.presenceDotOnline : styles.presenceDotOffline,
                         ]}
                       />
-                      <Text style={styles.userMeta} numberOfLines={1}>
-                        {item.online
-                          ? 'Available now'
-                          : item.username
-                            ? `@${item.username}`
-                            : 'Blink member'}
+                      <Text style={[styles.userMeta, item.online && styles.userMetaOnline]} numberOfLines={1}>
+                        {presenceLabel}
                       </Text>
                     </View>
                   </View>
@@ -300,130 +349,133 @@ export function NewChatScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  topBand: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 260,
-    backgroundColor: COLORS.backgroundSoft,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  loader: { flex: 1 },
-  listContent: { flexGrow: 1, paddingBottom: SIZES.xl },
-  discoveryCard: {
-    minHeight: 88,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: SIZES.md,
-    marginTop: SIZES.md,
-    marginBottom: SIZES.sm,
-    padding: SIZES.md,
-    borderRadius: 22,
-    backgroundColor: COLORS.surfaceGlass,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    borderTopColor: COLORS.highlight,
-    ...SHADOWS.soft,
-  },
-  discoveryIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primaryDark,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    marginRight: SIZES.sm + 4,
-    ...SHADOWS.glow,
-  },
-  discoveryCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  discoveryTitle: {
-    ...FONTS.bodyBold,
-    color: COLORS.text,
-  },
-  discoveryText: {
-    ...FONTS.caption,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  discoveryPill: {
-    minWidth: 54,
-    minHeight: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 17,
-    backgroundColor: COLORS.backgroundRaised,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginLeft: SIZES.sm,
-  },
-  discoveryPillValue: {
-    ...FONTS.bodyBold,
-    color: COLORS.primary,
-  },
-  discoveryPillLabel: {
-    ...FONTS.tiny,
-    color: COLORS.textSecondary,
-    textTransform: 'uppercase',
-  },
-  listHeader: {
-    paddingHorizontal: SIZES.md,
-    paddingVertical: SIZES.sm,
-    backgroundColor: 'transparent',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  listHeaderText: {
-    ...FONTS.caption,
-    color: COLORS.textSecondary,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceGlass,
-    paddingHorizontal: SIZES.md,
-    paddingVertical: SIZES.md,
-    marginHorizontal: SIZES.md,
-    marginVertical: SIZES.xs,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    borderTopColor: COLORS.highlight,
-    ...SHADOWS.soft,
-  },
-  userInfo: { flex: 1, marginLeft: SIZES.sm + 4 },
-  userName: { ...FONTS.bodyBold, color: COLORS.text },
-  userMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
-  },
-  presenceDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    marginRight: SIZES.xs,
-  },
-  presenceDotOnline: {
-    backgroundColor: COLORS.online,
-  },
-  presenceDotOffline: {
-    backgroundColor: COLORS.offline,
-  },
-  userMeta: { ...FONTS.caption, color: COLORS.textSecondary, flex: 1 },
-  actionArea: { marginLeft: SIZES.sm },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    },
+    topBand: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 260,
+      backgroundColor: colors.backgroundSoft,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    loader: { flex: 1 },
+    listContent: { flexGrow: 1, paddingBottom: SIZES.xl },
+    discoveryCard: {
+      minHeight: 88,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginHorizontal: SIZES.md,
+      marginTop: SIZES.md,
+      marginBottom: SIZES.sm,
+      padding: SIZES.md,
+      borderRadius: 22,
+      backgroundColor: colors.surfaceGlass,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      borderTopColor: colors.highlight,
+      ...SHADOWS.soft,
+    },
+    discoveryIcon: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primaryDark,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      marginRight: SIZES.sm + 4,
+      ...SHADOWS.glow,
+    },
+    discoveryCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+    discoveryTitle: {
+      ...FONTS.bodyBold,
+      color: colors.text,
+    },
+    discoveryText: {
+      ...FONTS.caption,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    discoveryPill: {
+      minWidth: 54,
+      minHeight: 46,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 17,
+      backgroundColor: colors.backgroundRaised,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginLeft: SIZES.sm,
+    },
+    discoveryPillValue: {
+      ...FONTS.bodyBold,
+      color: colors.primary,
+    },
+    discoveryPillLabel: {
+      ...FONTS.tiny,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+    listHeader: {
+      paddingHorizontal: SIZES.md,
+      paddingVertical: SIZES.sm,
+      backgroundColor: 'transparent',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    listHeaderText: {
+      ...FONTS.caption,
+      color: colors.textSecondary,
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+    },
+    userRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceGlass,
+      paddingHorizontal: SIZES.md,
+      paddingVertical: SIZES.md,
+      marginHorizontal: SIZES.md,
+      marginVertical: SIZES.xs,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      borderTopColor: colors.highlight,
+      ...SHADOWS.soft,
+    },
+    userInfo: { flex: 1, marginLeft: SIZES.sm + 4 },
+    userName: { ...FONTS.bodyBold, color: colors.text },
+    userMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 3,
+    },
+    presenceDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      marginRight: SIZES.xs,
+    },
+    presenceDotOnline: {
+      backgroundColor: colors.online,
+    },
+    presenceDotOffline: {
+      backgroundColor: colors.offline,
+    },
+    userMeta: { ...FONTS.caption, color: colors.textSecondary, flex: 1 },
+    userMetaOnline: { color: colors.online, fontWeight: '700' },
+    actionArea: { marginLeft: SIZES.sm },
+  });
+}

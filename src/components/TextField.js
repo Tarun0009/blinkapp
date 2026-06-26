@@ -1,6 +1,7 @@
-import React, { useImperativeHandle, useRef, useState, forwardRef } from 'react';
+import React, { useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { COLORS, FONTS, ICON_SIZES, SHADOWS, SIZES } from '../constants/theme';
+import { FONTS, ICON_SIZES, SHADOWS, SIZES } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { AppIcon } from './AppIcon';
 import { PressableScale } from './PressableScale';
 
@@ -20,6 +21,8 @@ export const TextField = forwardRef(function TextField(
   },
   ref,
 ) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [isFocused, setIsFocused] = useState(false);
   const [isSecureVisible, setIsSecureVisible] = useState(false);
   const inputRef = useRef(null);
@@ -55,7 +58,7 @@ export const TextField = forwardRef(function TextField(
           <AppIcon
             name={icon}
             size={ICON_SIZES.md}
-            color={isFocused ? COLORS.primary : COLORS.textLight}
+            color={isFocused ? colors.primary : colors.textLight}
             style={styles.leadingIcon}
           />
         ) : null}
@@ -65,7 +68,7 @@ export const TextField = forwardRef(function TextField(
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={COLORS.textLight}
+          placeholderTextColor={colors.textLight}
           secureTextEntry={secure}
           editable={editable}
           showSoftInputOnFocus
@@ -94,7 +97,7 @@ export const TextField = forwardRef(function TextField(
             <AppIcon
               name={isSecureVisible ? 'eye-off-outline' : 'eye-outline'}
               size={ICON_SIZES.md}
-              color={isFocused ? COLORS.primary : COLORS.textSecondary}
+              color={isFocused ? colors.primary : colors.textSecondary}
             />
           </PressableScale>
         ) : null}
@@ -104,58 +107,60 @@ export const TextField = forwardRef(function TextField(
   );
 });
 
-const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: SIZES.sm + 4,
-  },
-  label: {
-    ...FONTS.small,
-    color: COLORS.textSecondary,
-    fontWeight: '700',
-    marginBottom: SIZES.xs,
-    marginLeft: 2,
-  },
-  inputWrap: {
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.inputBg,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderTopColor: COLORS.highlight,
-    paddingHorizontal: SIZES.md,
-  },
-  inputFocused: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.backgroundRaised,
-    ...SHADOWS.glow,
-  },
-  inputDisabled: {
-    backgroundColor: COLORS.surfaceAlt,
-  },
-  leadingIcon: {
-    marginRight: SIZES.sm,
-  },
-  input: {
-    flex: 1,
-    ...FONTS.body,
-    color: COLORS.text,
-    paddingVertical: SIZES.sm,
-    paddingHorizontal: 0,
-  },
-  trailingButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: -SIZES.xs,
-    marginLeft: SIZES.xs,
-  },
-  helper: {
-    ...FONTS.small,
-    color: COLORS.textLight,
-    marginTop: SIZES.xs,
-    marginLeft: 2,
-  },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    wrapper: {
+      marginBottom: SIZES.sm + 4,
+    },
+    label: {
+      ...FONTS.small,
+      color: colors.textSecondary,
+      fontWeight: '700',
+      marginBottom: SIZES.xs,
+      marginLeft: 2,
+    },
+    inputWrap: {
+      minHeight: 52,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.inputBg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderTopColor: colors.highlight,
+      paddingHorizontal: SIZES.md,
+    },
+    inputFocused: {
+      borderColor: colors.primary,
+      backgroundColor: colors.backgroundRaised,
+      ...SHADOWS.glow,
+    },
+    inputDisabled: {
+      backgroundColor: colors.surfaceAlt,
+    },
+    leadingIcon: {
+      marginRight: SIZES.sm,
+    },
+    input: {
+      flex: 1,
+      ...FONTS.body,
+      color: colors.text,
+      paddingVertical: SIZES.sm,
+      paddingHorizontal: 0,
+    },
+    trailingButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: -SIZES.xs,
+      marginLeft: SIZES.xs,
+    },
+    helper: {
+      ...FONTS.small,
+      color: colors.textLight,
+      marginTop: SIZES.xs,
+      marginLeft: 2,
+    },
+  });
+}

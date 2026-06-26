@@ -20,9 +20,11 @@ export function subscribeToPresence(userId, onPresence, onError) {
       return;
     }
 
+    const lastSeenValue = payload.lastSeen || payload.lastSeenAt;
+
     onPresence({
       online: Boolean(payload.online),
-      lastSeen: payload.lastSeen ? new Date(payload.lastSeen) : null,
+      lastSeen: lastSeenValue ? new Date(lastSeenValue) : null,
     });
   };
 

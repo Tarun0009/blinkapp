@@ -1,20 +1,21 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useRealtime } from '../context/RealtimeContext';
 import { useNetworkStatus } from '../shared/network/NetworkProvider';
-import { COLORS, FONTS, SHADOWS, SIZES } from '../constants/theme';
+import { FONTS, SHADOWS, SIZES } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { SOCKET_STATUS } from '../realtime/socketEvents';
 import { AppIcon } from './AppIcon';
 
-function getBannerState({ backendStatus, hasUser, isBackendUnavailable, isOffline, realtimeStatus }) {
+function getBannerState({ backendStatus, colors, hasUser, isBackendUnavailable, isOffline, realtimeStatus }) {
   if (isOffline) {
     return {
       icon: 'wifi-off',
       text: 'No internet connection',
-      color: COLORS.danger,
-      backgroundColor: COLORS.dangerLight,
+      color: colors.danger,
+      backgroundColor: colors.dangerLight,
     };
   }
 
@@ -22,8 +23,8 @@ function getBannerState({ backendStatus, hasUser, isBackendUnavailable, isOfflin
     return {
       icon: 'server',
       text: 'Service unavailable',
-      color: COLORS.warning,
-      backgroundColor: COLORS.warningLight,
+      color: colors.warning,
+      backgroundColor: colors.warningLight,
     };
   }
 
@@ -35,8 +36,8 @@ function getBannerState({ backendStatus, hasUser, isBackendUnavailable, isOfflin
     return {
       icon: 'wifi',
       text: 'Connecting realtime...',
-      color: COLORS.primary,
-      backgroundColor: COLORS.primaryLight,
+      color: colors.primary,
+      backgroundColor: colors.primaryLight,
     };
   }
 
@@ -44,8 +45,8 @@ function getBannerState({ backendStatus, hasUser, isBackendUnavailable, isOfflin
     return {
       icon: 'refresh-cw',
       text: 'Reconnecting...',
-      color: COLORS.warning,
-      backgroundColor: COLORS.warningLight,
+      color: colors.warning,
+      backgroundColor: colors.warningLight,
     };
   }
 
@@ -56,8 +57,8 @@ function getBannerState({ backendStatus, hasUser, isBackendUnavailable, isOfflin
         backendStatus === 'reachable'
           ? 'Realtime connection issue'
           : 'Checking service connection',
-      color: COLORS.danger,
-      backgroundColor: COLORS.dangerLight,
+      color: colors.danger,
+      backgroundColor: colors.dangerLight,
     };
   }
 
@@ -65,8 +66,8 @@ function getBannerState({ backendStatus, hasUser, isBackendUnavailable, isOfflin
     return {
       icon: 'wifi-off',
       text: 'Realtime disconnected',
-      color: COLORS.textSecondary,
-      backgroundColor: COLORS.surfaceAlt,
+      color: colors.textSecondary,
+      backgroundColor: colors.surfaceAlt,
     };
   }
 
@@ -77,9 +78,12 @@ export function ConnectionBanner() {
   const { user } = useAuth();
   const { status, isAppActive } = useRealtime();
   const { backendStatus, isBackendUnavailable, isOffline } = useNetworkStatus();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const banner = getBannerState({
     backendStatus,
+    colors,
     hasUser: Boolean(user),
     isBackendUnavailable,
     isOffline,
@@ -100,28 +104,30 @@ export function ConnectionBanner() {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    position: 'absolute',
-    left: SIZES.md,
-    right: SIZES.md,
-    zIndex: 50,
-    alignItems: 'center',
-  },
-  banner: {
-    minHeight: 32,
-    maxWidth: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SIZES.md,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.small,
-  },
-  text: {
-    ...FONTS.small,
-    fontWeight: '700',
-    marginLeft: SIZES.xs,
-  },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    wrap: {
+      position: 'absolute',
+      left: SIZES.md,
+      right: SIZES.md,
+      zIndex: 50,
+      alignItems: 'center',
+    },
+    banner: {
+      minHeight: 32,
+      maxWidth: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: SIZES.md,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...SHADOWS.small,
+    },
+    text: {
+      ...FONTS.small,
+      fontWeight: '700',
+      marginLeft: SIZES.xs,
+    },
+  });
+}

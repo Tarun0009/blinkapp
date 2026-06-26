@@ -14,7 +14,15 @@ function byLastMessage(a, b) {
   return new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0);
 }
 
+function toActiveChats(items = []) {
+  return items.filter((chat) => !chat.isArchived).sort(byLastMessage);
+}
+
 function upsertById(items, item) {
+  if (item.isArchived) {
+    return items.filter((chat) => chat.id !== item.id);
+  }
+
   const index = items.findIndex((existing) => existing.id === item.id);
 
   if (index === -1) {
@@ -26,6 +34,35 @@ function upsertById(items, item) {
   return next.sort(byLastMessage);
 }
 
+function applyPresenceToChats(items, payload = {}) {
+  const targetId = payload.userId || payload.uid;
+  if (!targetId) return { chats: items, changed: false };
+
+  const lastSeenValue = payload.lastSeen || payload.lastSeenAt;
+  let changed = false;
+
+  const nextChats = items.map((chat) => {
+    if (!Array.isArray(chat.members)) return chat;
+
+    let chatChanged = false;
+    const members = chat.members.map((member) => {
+      if (member.id !== targetId) return member;
+
+      chatChanged = true;
+      return {
+        ...member,
+        online: Boolean(payload.online),
+        lastSeenAt: payload.online ? member.lastSeenAt : lastSeenValue || member.lastSeenAt,
+      };
+    });
+
+    if (!chatChanged) return chat;
+    changed = true;
+    return { ...chat, members };
+  });
+
+  return { chats: nextChats, changed };
+}
 export function subscribeToUserChats(uid, onChats, onError) {
   if (!uid) {
     return () => {};
@@ -45,8 +82,10 @@ export function subscribeToUserChats(uid, onChats, onError) {
   // Optimistic cache hydration — show stale chats instantly if available.
   readCachedChats(uid).then((cached) => {
     if (!active || hasFreshData || cached.length === 0) return;
-    chats = cached;
-    onChats(chats);
+    chats = toActiveChats(cached);
+    if (chats.length > 0) {
+      onChats(chats);
+    }
   });
 
   const fetchChats = () =>
@@ -54,7 +93,7 @@ export function subscribeToUserChats(uid, onChats, onError) {
       .then((payload = {}) => {
         if (!active) return;
         hasFreshData = true;
-        chats = payload.chats || [];
+        chats = toActiveChats(payload.chats || []);
         emit();
       })
       .catch(onError);
@@ -81,6 +120,21 @@ export function subscribeToUserChats(uid, onChats, onError) {
     emit();
   });
 
+  const handlePresence = (payload = {}) => {
+    const result = applyPresenceToChats(chats, payload);
+    if (!result.changed) return;
+    chats = result.chats;
+    emit();
+  };
+
+  const unsubscribePresenceOnline = realtimeClient.on(
+    SOCKET_EVENTS.PRESENCE_ONLINE,
+    handlePresence,
+  );
+  const unsubscribePresenceOffline = realtimeClient.on(
+    SOCKET_EVENTS.PRESENCE_OFFLINE,
+    handlePresence,
+  );
   const unsubscribeError = realtimeClient.on(SOCKET_EVENTS.ERROR, onError);
 
   // Refetch when the socket comes back after a drop / background.
@@ -100,6 +154,8 @@ export function subscribeToUserChats(uid, onChats, onError) {
     active = false;
     unsubscribeUpdated();
     unsubscribeRemoved();
+    unsubscribePresenceOnline();
+    unsubscribePresenceOffline();
     unsubscribeError();
     unsubscribeStatus();
   };
@@ -147,7 +203,19 @@ export function subscribeToTypingUsers(chatId, uid, onTypingUsers, onError) {
 }
 
 export function fetchArchivedChats() {
-  return backendRequest('/api/chats?archived=true').then((payload) => payload?.chats || []);
+  return backendRequest('/api/chats?archived=true').then((payload) =>
+    (payload?.chats || []).filter((chat) => chat.isArchived),
+  );
+}
+
+export function fetchChatById(chatId) {
+  if (!chatId) {
+    return Promise.resolve(null);
+  }
+
+  return backendRequest(`/api/chats/${encodeURIComponent(chatId)}`).then(
+    (payload) => payload?.chat || null,
+  );
 }
 
 export function setTypingStatus(chatId, uid, isTyping) {

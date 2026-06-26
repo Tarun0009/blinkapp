@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getMessaging } from 'firebase-admin/messaging';
 import { env } from './env.js';
 
 const defaultServiceAccountPath = resolve(process.cwd(), 'serviceAccountKey.json');
@@ -31,6 +32,7 @@ if (!getApps().length) {
 }
 
 export const firebaseAuth = getAuth();
+export const firebaseMessaging = getMessaging();
 
 export async function verifyFirebaseToken(token?: string) {
   if (!token) {

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, FONTS, ICON_SIZES, SHADOWS, SIZES } from '../constants/theme';
+import { FONTS, ICON_SIZES, SHADOWS, SIZES } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { AppIcon } from './AppIcon';
 import { PRESS_FEEDBACK, PressableScale } from './PressableScale';
 
@@ -29,6 +30,8 @@ function getNestedRouteName(route) {
 }
 
 export function AppTabBar({ state, descriptors, navigation }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const focusedRoute = state.routes[state.index];
   const nestedRouteName = getNestedRouteName(focusedRoute);
@@ -74,7 +77,7 @@ export function AppTabBar({ state, descriptors, navigation }) {
                   <AppIcon
                     name={iconName}
                     size={focused ? ICON_SIZES.lg : ICON_SIZES.md}
-                    color={focused ? COLORS.white : COLORS.textSecondary}
+                    color={focused ? colors.white : colors.textSecondary}
                   />
                 </View>
                 <Text style={[styles.label, focused && styles.labelActive]} numberOfLines={1}>
@@ -89,64 +92,66 @@ export function AppTabBar({ state, descriptors, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: COLORS.background,
-    paddingHorizontal: SIZES.md,
-    paddingTop: SIZES.xs,
-  },
-  shell: {
-    position: 'relative',
-  },
-  bar: {
-    minHeight: 66,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SIZES.xs,
-    borderRadius: 24,
-    backgroundColor: COLORS.surfaceGlass,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    borderTopColor: COLORS.highlight,
-    ...SHADOWS.medium,
-  },
-  item: {
-    flex: 1,
-    minHeight: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    paddingHorizontal: SIZES.sm,
-  },
-  itemActive: {
-    backgroundColor: COLORS.primarySoft,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.backgroundRaised,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  iconWrapActive: {
-    backgroundColor: COLORS.primaryDark,
-    borderColor: COLORS.primary,
-    ...SHADOWS.glow,
-  },
-  label: {
-    ...FONTS.small,
-    color: COLORS.textSecondary,
-    fontWeight: '700',
-    marginLeft: SIZES.sm,
-  },
-  labelActive: {
-    color: COLORS.primary,
-  },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    safeArea: {
+      backgroundColor: colors.background,
+      paddingHorizontal: SIZES.md,
+      paddingTop: SIZES.xs,
+    },
+    shell: {
+      position: 'relative',
+    },
+    bar: {
+      minHeight: 66,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: SIZES.xs,
+      borderRadius: 24,
+      backgroundColor: colors.surfaceGlass,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      borderTopColor: colors.highlight,
+      ...SHADOWS.medium,
+    },
+    item: {
+      flex: 1,
+      minHeight: 54,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 20,
+      paddingHorizontal: SIZES.sm,
+    },
+    itemActive: {
+      backgroundColor: colors.primarySoft,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    iconWrap: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.backgroundRaised,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    iconWrapActive: {
+      backgroundColor: colors.primaryDark,
+      borderColor: colors.primary,
+      ...SHADOWS.glow,
+    },
+    label: {
+      ...FONTS.small,
+      color: colors.textSecondary,
+      fontWeight: '700',
+      marginLeft: SIZES.sm,
+    },
+    labelActive: {
+      color: colors.primary,
+    },
+  });
+}

@@ -8,13 +8,20 @@ import {
   signOut,
   subscribeToAuthState,
   updateAuthProfile,
-} from '../services/authService';
+} from '../features/auth/services/authService';
 import {
   buildUserProfile,
   fetchCurrentUserProfile,
   patchCurrentUserProfile,
   syncUserProfile,
-} from '../services/userService';
+} from '../features/profile/services/userService';
+import {
+  getDeviceToken,
+  registerDeviceToken,
+  requestNotificationPermission,
+  subscribeToTokenRefresh,
+  unregisterDeviceToken,
+} from '../features/notifications/services/notificationService';
 
 const AuthContext = createContext(null);
 
@@ -23,6 +30,34 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const firebaseUserRef = useRef(null);
+  const lastRegisteredTokenRef = useRef(null);
+
+  const registerForPushNotifications = useCallback(async () => {
+    try {
+      const granted = await requestNotificationPermission();
+      if (!granted) return;
+      const token = await getDeviceToken();
+      if (!token) return;
+      await registerDeviceToken(token);
+      lastRegisteredTokenRef.current = token;
+    } catch {
+      // Push registration is best-effort — don't break login if FCM is misconfigured.
+    }
+  }, []);
+
+  // Re-register if FCM rotates the token.
+  useEffect(() => {
+    const unsubscribe = subscribeToTokenRefresh(async (token) => {
+      try {
+        if (!firebaseUserRef.current) return;
+        await registerDeviceToken(token);
+        lastRegisteredTokenRef.current = token;
+      } catch {
+        // Best-effort.
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -54,13 +89,15 @@ export function AuthProvider({ children }) {
       } catch {
         // Hydration is best-effort — the local Firebase profile already covers basic UI.
       }
+
+      registerForPushNotifications();
     });
 
     return () => {
       isMounted = false;
       unsubscribe();
     };
-  }, []);
+  }, [registerForPushNotifications]);
 
   const login = useCallback(async (email, password) => {
     return signIn(email, password);
@@ -79,6 +116,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
+    // Best-effort: unregister this device's push token BEFORE signing out so the
+    // backend stops fanning out notifications to it. We do this while the
+    // Firebase ID token is still valid.
+    const token = lastRegisteredTokenRef.current;
+    if (token) {
+      try {
+        await unregisterDeviceToken(token);
+      } catch {
+        // Ignore — stale tokens are pruned server-side when FCM rejects them.
+      }
+      lastRegisteredTokenRef.current = null;
+    }
     await signOut();
   }, []);
 

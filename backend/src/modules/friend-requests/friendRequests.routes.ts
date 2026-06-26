@@ -7,6 +7,10 @@ import { badRequest, forbidden, notFound } from '../../shared/http/errors.js';
 import { getRouteParam } from '../../shared/http/params.js';
 import { findDirectChat, getChatForUser } from '../chats/chats.service.js';
 import { isBlockedEitherWay } from '../users/users.service.js';
+import {
+  pushFriendRequestNotification,
+  senderDisplayName,
+} from '../notifications/notifications.events.js';
 import { toApiFriendRequest } from './friendRequests.mapper.js';
 
 const sendRequestSchema = z.object({
@@ -141,6 +145,13 @@ friendRequestsRouter.post('/', requireAuth, async (req, res, next) => {
     io?.to(`user:${sender.id}`).emit('friend-request:updated', payload);
 
     res.status(201).json(payload);
+
+    pushFriendRequestNotification({
+      requestId: request.id,
+      senderId: sender.id,
+      senderDisplayName: senderDisplayName(request.sender),
+      receiverId: receiver.id,
+    }).catch(() => {});
   } catch (error) {
     next(error);
   }
@@ -198,15 +209,19 @@ friendRequestsRouter.post('/:requestId/accept', requireAuth, async (req, res, ne
     });
 
     const apiRequest = toApiFriendRequest(result.request);
-    const chat = await getChatForUser(result.chatId, currentUserId);
-    const payload = { request: apiRequest, chat };
+    const [senderChat, receiverChat] = await Promise.all([
+      getChatForUser(result.chatId, existingRequest.senderId),
+      getChatForUser(result.chatId, existingRequest.receiverId),
+    ]);
+    const senderPayload = { request: apiRequest, chat: senderChat };
+    const receiverPayload = { request: apiRequest, chat: receiverChat };
     const io = getSocketServer();
-    io?.to(`user:${existingRequest.senderId}`).emit('friend-request:updated', payload);
-    io?.to(`user:${existingRequest.receiverId}`).emit('friend-request:updated', payload);
-    io?.to(`user:${existingRequest.senderId}`).emit('chat:updated', { chat });
-    io?.to(`user:${existingRequest.receiverId}`).emit('chat:updated', { chat });
+    io?.to(`user:${existingRequest.senderId}`).emit('friend-request:updated', senderPayload);
+    io?.to(`user:${existingRequest.receiverId}`).emit('friend-request:updated', receiverPayload);
+    io?.to(`user:${existingRequest.senderId}`).emit('chat:updated', { chat: senderChat });
+    io?.to(`user:${existingRequest.receiverId}`).emit('chat:updated', { chat: receiverChat });
 
-    res.json(payload);
+    res.json(receiverPayload);
   } catch (error) {
     next(error);
   }

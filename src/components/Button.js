@@ -1,26 +1,29 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
-import { COLORS, FONTS, ICON_SIZES, SHADOWS, SIZES } from '../constants/theme';
+import { FONTS, ICON_SIZES, SHADOWS, SIZES } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { AppIcon } from './AppIcon';
 import { PRESS_FEEDBACK, PressableScale } from './PressableScale';
 
-const VARIANTS = {
-  primary: {
-    backgroundColor: COLORS.primaryDark,
-    borderColor: COLORS.primary,
-    color: COLORS.white,
-  },
-  secondary: {
-    backgroundColor: COLORS.surfaceAlt,
-    borderColor: COLORS.borderStrong,
-    color: COLORS.text,
-  },
-  danger: {
-    backgroundColor: COLORS.dangerLight,
-    borderColor: COLORS.danger,
-    color: COLORS.danger,
-  },
-};
+function getVariants(colors) {
+  return {
+    primary: {
+      backgroundColor: colors.primaryDark,
+      borderColor: colors.primary,
+      color: colors.white,
+    },
+    secondary: {
+      backgroundColor: colors.surfaceAlt,
+      borderColor: colors.borderStrong,
+      color: colors.text,
+    },
+    danger: {
+      backgroundColor: colors.dangerLight,
+      borderColor: colors.danger,
+      color: colors.danger,
+    },
+  };
+}
 
 export function Button({
   label,
@@ -31,7 +34,10 @@ export function Button({
   variant = 'primary',
   style,
 }) {
-  const palette = VARIANTS[variant] || VARIANTS.primary;
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const variants = useMemo(() => getVariants(colors), [colors]);
+  const palette = variants[variant] || variants.primary;
   const isDisabled = disabled || loading;
 
   return (
@@ -73,31 +79,33 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    minHeight: 52,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    paddingHorizontal: SIZES.md,
-    overflow: 'hidden',
-    ...SHADOWS.small,
-  },
-  primaryShadow: {
-    ...SHADOWS.glow,
-  },
-  secondaryBorder: {
-    borderTopColor: COLORS.highlight,
-  },
-  disabled: {
-    opacity: 0.65,
-  },
-  icon: {
-    marginRight: SIZES.sm,
-  },
-  label: {
-    ...FONTS.bodyBold,
-  },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    button: {
+      minHeight: 52,
+      borderRadius: 18,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      paddingHorizontal: SIZES.md,
+      overflow: 'hidden',
+      ...SHADOWS.small,
+    },
+    primaryShadow: {
+      ...SHADOWS.glow,
+    },
+    secondaryBorder: {
+      borderTopColor: colors.highlight,
+    },
+    disabled: {
+      opacity: 0.65,
+    },
+    icon: {
+      marginRight: SIZES.sm,
+    },
+    label: {
+      ...FONTS.bodyBold,
+    },
+  });
+}

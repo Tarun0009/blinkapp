@@ -27,28 +27,61 @@ async function markPendingDirectMessagesDelivered(
     where: {
       chatId: { in: chatIds },
       senderId: { not: userId },
-      status: MessageStatus.SENT,
       chat: { isGroup: false },
+      OR: [
+        { receipts: { none: { userId } } },
+        { receipts: { some: { userId, deliveredAt: null, readAt: null } } },
+      ],
     },
-    select: { id: true },
+    include: {
+      receipts: {
+        where: { userId },
+      },
+    },
   });
 
   if (pending.length === 0) {
     return;
   }
 
+  const now = new Date();
   const ids = pending.map(message => message.id);
+
+  await Promise.all(
+    pending.map(message => prisma.messageReceipt.upsert({
+      where: {
+        messageId_userId: {
+          messageId: message.id,
+          userId,
+        },
+      },
+      update: {
+        deliveredAt: message.receipts[0]?.deliveredAt ?? now,
+      },
+      create: {
+        messageId: message.id,
+        userId,
+        deliveredAt: now,
+      },
+    })),
+  );
+
   await prisma.message.updateMany({
     where: { id: { in: ids } },
     data: {
       status: MessageStatus.DELIVERED,
-      deliveredAt: new Date(),
+      deliveredAt: now,
     },
   });
 
   const messages = await prisma.message.findMany({
     where: { id: { in: ids } },
-    include: { sender: true },
+    include: {
+      sender: true,
+      receipts: {
+        include: { user: true },
+      },
+    },
   });
 
   messages.forEach(message => {

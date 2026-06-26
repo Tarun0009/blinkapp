@@ -45,15 +45,31 @@ export function useFriendRequests(uid) {
       throw new Error('Not authenticated');
     }
 
-    await sendFriendRequest(uid, receiver, currentUserProfile);
+    const payload = await sendFriendRequest(uid, receiver, currentUserProfile);
+    const request = payload?.request;
+    if (request?.id) {
+      setOutgoingRequests((current) => {
+        const index = current.findIndex((item) => item.id === request.id);
+        if (index === -1) return [request, ...current];
+
+        const next = [...current];
+        next[index] = { ...next[index], ...request };
+        return next;
+      });
+    }
+    return payload;
   }, [uid]);
 
   const acceptRequest = useCallback(async (request) => {
-    return acceptFriendRequest(request);
+    const payload = await acceptFriendRequest(request);
+    setIncomingRequests((current) => current.filter((item) => item.id !== request.id));
+    return payload;
   }, []);
 
   const rejectRequest = useCallback(async (requestId) => {
-    return rejectFriendRequest(requestId);
+    const payload = await rejectFriendRequest(requestId);
+    setIncomingRequests((current) => current.filter((item) => item.id !== requestId));
+    return payload;
   }, []);
 
   return {

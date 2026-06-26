@@ -1,19 +1,25 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
-import { COLORS, ICON_SIZES, SHADOWS, SIZES } from '../constants/theme';
+import { ICON_SIZES, SHADOWS, SIZES } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { AppIcon } from './AppIcon';
 import { PressableScale } from './PressableScale';
 
 export function IconButton({
   name,
   onPress,
-  color = COLORS.text,
+  color,
   size = ICON_SIZES.lg,
-  backgroundColor = COLORS.surfaceElevated,
+  backgroundColor,
   disabled = false,
   accessibilityLabel,
   style,
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const iconColor = color ?? colors.text;
+  const bgColor = backgroundColor ?? colors.surfaceElevated;
+
   return (
     <PressableScale
       accessibilityRole="button"
@@ -27,29 +33,31 @@ export function IconButton({
       borderless
       style={[
         styles.button,
-        { backgroundColor },
+        { backgroundColor: bgColor },
         disabled && styles.disabled,
         style,
       ]}>
-      <AppIcon name={name} size={size} color={color} />
+      <AppIcon name={name} size={size} color={iconColor} />
     </PressableScale>
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: SIZES.xs,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderTopColor: COLORS.highlight,
-    ...SHADOWS.soft,
-  },
-  disabled: {
-    opacity: 0.45,
-  },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    button: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: SIZES.xs,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderTopColor: colors.highlight,
+      ...SHADOWS.soft,
+    },
+    disabled: {
+      opacity: 0.45,
+    },
+  });
+}

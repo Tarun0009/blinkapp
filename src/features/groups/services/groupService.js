@@ -30,3 +30,10 @@ export function removeGroupMember(chatId, memberId) {
     method: 'DELETE',
   });
 }
+
+export function updateGroupMemberRole(chatId, memberId, role) {
+  return backendRequest(`/api/chats/${chatId}/members/${memberId}/role`, {
+    method: 'PATCH',
+    body: { role },
+  });
+}

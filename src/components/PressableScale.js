@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
 import { Animated, Platform, Pressable } from 'react-native';
-import { COLORS } from '../constants/theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -73,5 +72,5 @@ export function PressableScale({
 export const PRESS_FEEDBACK = {
   softRipple: 'rgba(37, 99, 235, 0.08)',
   lightRipple: 'rgba(255, 255, 255, 0.22)',
-  dangerRipple: COLORS.dangerLight,
+  dangerRipple: 'rgba(251,113,133,0.14)',
 };

@@ -13,7 +13,8 @@ import { Button } from '../../../components/Button';
 import { EmptyState } from '../../../components/EmptyState';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { SearchBar } from '../../../components/SearchBar';
-import { COLORS, SIZES } from '../../../constants/theme';
+import { SIZES } from '../../../constants/theme';
+import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useChats } from '../../chats/hooks/useChats';
 import { showErrorAlert } from '../../../utils/errorUtils';
@@ -55,6 +56,8 @@ function matchesSearch(person, search) {
 
 export function AddGroupMembersScreen({ route, navigation }) {
   const { chatId, chatName, existingMemberIds = [] } = route.params;
+  const { colors, scheme } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const { chats, loading } = useChats(user?.uid);
   const [search, setSearch] = useState('');
@@ -103,7 +106,10 @@ export function AddGroupMembersScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+      <StatusBar
+        barStyle={scheme === 'light' ? 'dark-content' : 'light-content'}
+        backgroundColor={colors.background}
+      />
       <ScreenHeader
         title="Add Members"
         subtitle={chatName || 'Group chat'}
@@ -119,7 +125,7 @@ export function AddGroupMembersScreen({ route, navigation }) {
 
       {loading && addablePeople.length === 0 ? (
         <View style={styles.loaderWrap}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -173,28 +179,30 @@ export function AddGroupMembersScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  loaderWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingBottom: SIZES.xxl + SIZES.md,
-  },
-  emptyContent: {
-    justifyContent: 'center',
-  },
-  footer: {
-    padding: SIZES.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    backgroundColor: COLORS.background,
-  },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    },
+    loaderWrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    listContent: {
+      flexGrow: 1,
+      paddingBottom: SIZES.xxl + SIZES.md,
+    },
+    emptyContent: {
+      justifyContent: 'center',
+    },
+    footer: {
+      padding: SIZES.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+    },
+  });
+}

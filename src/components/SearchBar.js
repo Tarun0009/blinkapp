@@ -1,10 +1,13 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Pressable, TextInput, StyleSheet } from 'react-native';
-import { COLORS, SIZES, FONTS, ICON_SIZES, SHADOWS } from '../constants/theme';
+import { SIZES, FONTS, ICON_SIZES, SHADOWS } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { AppIcon } from './AppIcon';
 import { PressableScale } from './PressableScale';
 
 export function SearchBar({ value, onChangeText, placeholder = 'Search...', onClear, style }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const inputRef = useRef(null);
 
   return (
@@ -15,7 +18,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...', onCl
       <AppIcon
         name="magnify"
         size={ICON_SIZES.md}
-        color={COLORS.textLight}
+        color={colors.textLight}
         style={styles.icon}
       />
       <TextInput
@@ -24,7 +27,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...', onCl
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={COLORS.textLight}
+        placeholderTextColor={colors.textLight}
         autoCapitalize="none"
         autoCorrect={false}
         showSoftInputOnFocus
@@ -39,34 +42,36 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...', onCl
           activeOpacity={0.72}
           borderless
           style={styles.clearButton}>
-          <AppIcon name="close-circle" size={ICON_SIZES.md} color={COLORS.textLight} />
+          <AppIcon name="close-circle" size={ICON_SIZES.md} color={colors.textLight} />
         </PressableScale>
       )}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceGlass,
-    borderRadius: SIZES.borderRadiusLg,
-    paddingHorizontal: SIZES.sm + 4,
-    marginHorizontal: SIZES.md,
-    marginVertical: SIZES.sm,
-    height: 46,
-    borderWidth: 1,
-    borderColor: COLORS.borderStrong,
-    borderTopColor: COLORS.highlight,
-    ...SHADOWS.soft,
-  },
-  icon: { marginRight: SIZES.sm },
-  input: {
-    flex: 1,
-    ...FONTS.body,
-    color: COLORS.text,
-    padding: 0,
-  },
-  clearButton: { padding: 4 },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceGlass,
+      borderRadius: SIZES.borderRadiusLg,
+      paddingHorizontal: SIZES.sm + 4,
+      marginHorizontal: SIZES.md,
+      marginVertical: SIZES.sm,
+      height: 46,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      borderTopColor: colors.highlight,
+      ...SHADOWS.soft,
+    },
+    icon: { marginRight: SIZES.sm },
+    input: {
+      flex: 1,
+      ...FONTS.body,
+      color: colors.text,
+      padding: 0,
+    },
+    clearButton: { padding: 4 },
+  });
+}

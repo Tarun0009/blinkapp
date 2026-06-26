@@ -14,6 +14,8 @@ export const SOCKET_EVENTS = {
 
   TYPING_START: 'typing:start',
   TYPING_STOP: 'typing:stop',
+  PRESENCE_ONLINE: 'presence:online',
+  PRESENCE_OFFLINE: 'presence:offline',
 };
 
 export const SOCKET_STATUS = {

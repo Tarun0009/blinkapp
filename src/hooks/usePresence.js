@@ -22,22 +22,47 @@ export function usePresence(uid) {
   }, [isAppActive, isConnected, uid]);
 }
 
-export function useUserPresence(userId) {
-  const [online, setOnline] = useState(false);
-  const [lastSeen, setLastSeen] = useState(null);
+function toDate(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function buildPresence(initialPresence) {
+  return {
+    online: Boolean(initialPresence?.online),
+    lastSeen: toDate(initialPresence?.lastSeen || initialPresence?.lastSeenAt),
+  };
+}
+
+export function useUserPresence(userId, initialPresence) {
+  const initialOnline = initialPresence?.online;
+  const initialLastSeen = initialPresence?.lastSeen;
+  const initialLastSeenAt = initialPresence?.lastSeenAt;
+  const [presence, setPresence] = useState(() => buildPresence(initialPresence));
+
+  useEffect(() => {
+    setPresence(buildPresence({
+      online: initialOnline,
+      lastSeen: initialLastSeen,
+      lastSeenAt: initialLastSeenAt,
+    }));
+  }, [initialLastSeen, initialLastSeenAt, initialOnline, userId]);
 
   useEffect(() => {
     if (!userId) return undefined;
 
-    const unsubscribe = subscribeToPresence(userId, (presence) => {
-      setOnline(presence.online);
-      setLastSeen(presence.lastSeen);
+    const unsubscribe = subscribeToPresence(userId, (nextPresence) => {
+      setPresence((current) => ({
+        online: nextPresence.online,
+        lastSeen: nextPresence.lastSeen || current.lastSeen,
+      }));
     });
 
     return unsubscribe;
   }, [userId]);
 
-  return { online, lastSeen };
+  return presence;
 }
 
 export function useTypingIndicator(chatId, uid) {
